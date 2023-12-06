@@ -1,0 +1,29 @@
+version: '3'
+
+services:
+  apache:
+    image: php:apache
+    container_name: apache_container
+    restart: always
+    ports:
+      - "8080:80"
+    networks:
+      - web_network
+    volumes:
+    - /home/main-www:/var/www/html
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx_container
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - /home/nginx:/etc/nginx/conf.d
+    networks:
+      - web_network
+
+networks:
+  web_network:
+
+
