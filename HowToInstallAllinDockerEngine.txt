@@ -1,0 +1,229 @@
+install docker
+
+sudo yum install -y yum-utils device-mapper-persistent-data lvm2
+sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+sudo yum install docker-ce docker-ce-cli containerd.io
+sudo systemctl start docker
+sudo systemctl enable docker
+
+
+install docker compose 
+
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+
+sudo chmod +x /usr/local/bin/docker-compose
+
+sudo mv /usr/local/bin/docker-compose /usr/bin/docker-compose
+
+docker-compose --version
+
+buat volume postgres_data
+docker volume create volume postgres_data
+ 
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:latest
+    container_name: postgres_DB
+    environment:
+      POSTGRES_DB: postgresql
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+    external: true
+
+cara akses
+docker exec -it postgres_DB psql -U admin -d postgresql
+
+install apache 8080 dan nginx 80
+dimana apache dapat di hubungi oleh nginx melalui port 80
+
+buat folder pada home berisi 1. nginx ( untuk conf ) 2. main-www 3. apache
+
+kita bisa buat langsung docker-compose.yml nya dengan cara
+
+version: '3'
+
+services:
+  apache:
+    image: php:apache
+    container_name: apache_container
+    restart: always
+    ports:
+      - "8080:80"
+    networks:
+      - web_network
+    volumes:
+    - /home/main-www:/var/www/html
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx_container
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - /home/nginx:/etc/nginx/conf.d
+    networks:
+      - web_network
+
+networks:
+  web_network:
+
+
+simpan menjadi docker-compose.yml
+
+
+	  
+	  
+pastikan default.conf ada, jika tidak ada input ini
+server {
+    listen       80;
+    listen  [::]:80;
+    server_name  localhost;
+
+    #access_log  /var/log/nginx/host.access.log  main;
+
+    location / {
+        root   /usr/share/nginx/html;
+        index  index.html index.htm;
+    }
+
+    #error_page  404              /404.html;
+
+    # redirect server error pages to the static page /50x.html
+    #
+    error_page   500 502 503 504  /50x.html;
+    location = /50x.html {
+        root   /usr/share/nginx/html;
+    }
+
+    # proxy the PHP scripts to Apache listening on 127.0.0.1:80
+    #
+    #location ~ \.php$ {
+    #    proxy_pass   http://127.0.0.1;
+    #}
+
+    # pass the PHP scripts to FastCGI server listening on 127.0.0.1:9000
+    #
+    #location ~ \.php$ {
+    #    root           html;
+    #    fastcgi_pass   127.0.0.1:9000;
+    #    fastcgi_index  index.php;
+    #    fastcgi_param  SCRIPT_FILENAME  /scripts$fastcgi_script_name;
+    #    include        fastcgi_params;
+    #}
+
+    # deny access to .htaccess files, if Apache's document root
+    # concurs with nginx's one
+    #
+    #location ~ /\.ht {
+    #    deny  all;
+    #}
+}
+
+
+
+atur proxy nginx supaya dapat di akses dengan php 
+
+	
+		proxy_pass http://51.79.178.42:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme; 
+		
+		
+dan pada root html isi dengan
+
+<!doctype html>
+<html lang="en">
+<head>
+
+<p>Nginx with Docker Compose</p>
+
+
+</head>
+<body>
+
+<h2>Install Nginx using Docker Compose.</h2>
+<p>This content is being served by an Nginx Docker container.</p>
+
+</html>
+
+
+
+
+install golang
+
+karena port 8080 sudah digunakan apache kita gunakan 8081
+
+Buat file main.go di /var/www/golang-example
+
+// main.go
+package main
+
+import (
+	"fmt"
+	"net/http"
+	"os"
+)
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "Hello, Docker! Port 8081")
+}
+
+func main() {
+	http.HandleFunc("/", handler)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8081"
+	}
+
+	fmt.Printf("Server listening on :%s...\n", port)
+	err := http.ListenAndServe(":"+port, nil)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+	}
+}
+
+buat Dockerfile
+
+
+# Use the official Go image as the base image
+FROM golang:1.17-alpine
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy the local code to the container
+COPY . .
+
+# Build the Go application
+RUN go get -d -v ./...
+RUN go install -v ./...
+
+# Expose port 8081 to the outside world
+EXPOSE 8081
+
+# Command to run the executable
+CMD ["app"]
+
+build image dan running container
+dengan cara  >
+
+docker build -t go-docker-example .
+
+docker run -p 8081:8081 go-docker-example
+
+docker run -p 8081:8081 91fe3ef8b908
+
+
+
